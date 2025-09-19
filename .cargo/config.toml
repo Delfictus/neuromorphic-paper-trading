@@ -1,0 +1,8 @@
+[registries]
+ares = { index = "https://github.com/delfictus/ares-registry.git" }
+
+[source.ares]
+registry = "https://github.com/delfictus/ares-registry.git"
+
+[net]
+git-fetch-with-cli = true

@@ -1,0 +1,35 @@
+[package]
+name = "neuromorphic-paper-trader"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ididia Serfaty <ididiaserfaty@protonmail.com>"]
+description = "Standalone paper trading system using neuromorphic predictions"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dashmap = "5.4"
+parking_lot = "0.12"
+nanoid = "0.4"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async runtime
+async-trait = "0.1"
+
+# ARES library dependencies (using git for reliable access)
+ares-spike-encoding = { git = "https://github.com/Delfictus/ARES-51.git" }
+ares-neuromorphic-core = { git = "https://github.com/Delfictus/ARES-51.git" }
+ares-csf-core = { git = "https://github.com/Delfictus/ARES-51.git" }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[[bin]]
+name = "paper-trader"
+path = "src/main.rs"
