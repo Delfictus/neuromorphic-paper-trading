@@ -1,0 +1,31 @@
+[package]
+name = "neuromorphic-barter-bridge"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ididia Serfaty <ididiaserfaty@protonmail.com>"]
+description = "Bridge between neuromorphic trading signals and Barter-rs framework"
+license = "MIT"
+
+[dependencies]
+# Workspace dependencies
+tokio = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+futures-util = { workspace = true }
+thiserror = { workspace = true }
+
+# Barter ecosystem dependencies
+barter = { workspace = true }
+barter-data = { workspace = true }
+barter-execution = { workspace = true }
+barter-integration = { workspace = true }
+
+# Internal dependencies
+neuromorphic-core = { path = "../neuromorphic-core" }
+
+[dev-dependencies]
+tokio-test = { workspace = true }

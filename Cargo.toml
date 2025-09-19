@@ -1,35 +1,49 @@
-[package]
-name = "neuromorphic-paper-trader"
-version = "0.1.0"
-edition = "2021"
-authors = ["Ididia Serfaty <ididiaserfaty@protonmail.com>"]
-description = "Standalone paper trading system using neuromorphic predictions"
-license = "MIT"
+[workspace]
+members = [
+    "neuromorphic-core",
+    "neuromorphic-barter-bridge", 
+    "paper-trader-app"
+]
+resolver = "2"
 
-[dependencies]
-anyhow = "1.0"
+[workspace.dependencies]
+# Core async and utilities
 tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Async utilities
+async-trait = "0.1"
+futures-util = "0.3"
+
+# Concurrency and data structures
 dashmap = "5.4"
 parking_lot = "0.12"
 nanoid = "0.4"
-tracing = "0.1"
-tracing-subscriber = "0.3"
-uuid = { version = "1.0", features = ["v4"] }
-chrono = { version = "0.4", features = ["serde"] }
 
-# Async runtime
-async-trait = "0.1"
+# Error handling
+thiserror = "1.0"
+
+# WebSocket and HTTP
+tokio-tungstenite = { version = "0.20", features = ["native-tls"] }
+reqwest = { version = "0.11", features = ["json"] }
+url = "2.4"
+
+# Barter ecosystem
+barter = "0.8"
+barter-data = "0.9"
+barter-execution = "0.4"
+barter-integration = "0.4"
 
 # ARES library dependencies (using git for reliable access)
 ares-spike-encoding = { git = "https://github.com/Delfictus/ARES-51.git" }
 ares-neuromorphic-core = { git = "https://github.com/Delfictus/ARES-51.git" }
 ares-csf-core = { git = "https://github.com/Delfictus/ARES-51.git" }
 
-[dev-dependencies]
+[workspace.dev-dependencies]
 tokio-test = "0.4"
-
-[[bin]]
-name = "paper-trader"
-path = "src/main.rs"

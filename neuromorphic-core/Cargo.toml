@@ -1,0 +1,34 @@
+[package]
+name = "neuromorphic-core"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ididia Serfaty <ididiaserfaty@protonmail.com>"]
+description = "Core neuromorphic trading components and market data processing"
+license = "MIT"
+
+[dependencies]
+# Workspace dependencies
+tokio = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+futures-util = { workspace = true }
+dashmap = { workspace = true }
+parking_lot = { workspace = true }
+nanoid = { workspace = true }
+thiserror = { workspace = true }
+tokio-tungstenite = { workspace = true }
+reqwest = { workspace = true }
+url = { workspace = true }
+
+# ARES dependencies
+ares-spike-encoding = { workspace = true }
+ares-neuromorphic-core = { workspace = true }
+ares-csf-core = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
