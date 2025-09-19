@@ -1,7 +1,7 @@
 //! WebSocket streaming interface for real-time market data
 
 use async_trait::async_trait;
-use futures_util::{stream::SplitSink, SinkExt, StreamExt};
+use futures_util::{stream::{SplitSink, SplitStream}, SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -211,7 +211,7 @@ impl WebSocketManager {
         mut control_receiver: mpsc::UnboundedReceiver<ControlMessage>,
     ) {
         let mut reconnect_attempts = 0;
-        let mut websocket: Option<WebSocketStream<MaybeTlsStream<TcpStream>>> = None;
+        let mut websocket: Option<SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>> = None;
         let mut write_sink: Option<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>> = None;
         
         loop {
@@ -344,7 +344,7 @@ impl WebSocketManager {
     async fn connect_websocket(
         url: &str,
     ) -> ExchangeResult<(
-        WebSocketStream<MaybeTlsStream<TcpStream>>,
+        SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
         SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
     )> {
         let url = Url::parse(url).map_err(|e| ExchangeError::InvalidRequest {
@@ -356,7 +356,7 @@ impl WebSocketManager {
         })?;
         
         let (sink, stream) = ws_stream.split();
-        Ok((stream.reunite(sink.reunite(stream).unwrap()).unwrap(), sink))
+        Ok((stream, sink))
     }
     
     /// Send subscription/unsubscription message
@@ -398,7 +398,7 @@ impl WebSocketManager {
     
     /// Receive message with timeout
     async fn receive_message(
-        websocket: &mut Option<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+        websocket: &mut Option<SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>>,
         message_timeout: &Duration,
     ) -> ExchangeResult<Option<Message>> {
         if let Some(ws) = websocket {
@@ -533,7 +533,7 @@ impl StreamManager for WebSocketManager {
     }
     
     async fn get_status(&self) -> ConnectionStatus {
-        *self.connection_status.read().await
+        self.connection_status.read().await.clone()
     }
     
     async fn get_metrics(&self) -> StreamMetrics {

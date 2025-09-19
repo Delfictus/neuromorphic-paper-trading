@@ -211,10 +211,10 @@ impl PaperTradingEngine {
                                     eprintln!("Error handling sell signal: {}", e);
                                 }
                             }
-                            SignalAction::Close { position_id } => {
+                            SignalAction::Close { ref position_id } => {
                                 if let Err(e) = Self::handle_close_signal(
                                     &signal,
-                                    position_id,
+                                    position_id.clone(),
                                     &position_manager,
                                     &order_manager,
                                     &current_prices,
@@ -571,15 +571,19 @@ impl PaperTradingEngine {
                 }
                 
                 // Update statistics
-                let mut stats = statistics.write();
-                stats.capital = current_cap;
-                stats.total_pnl = total_pnl;
-                stats.total_return_pct = ((current_cap - initial_capital) / initial_capital) * 100.0;
-                stats.position_stats = pos_stats;
-                stats.risk_metrics = risk_manager.get_metrics();
+                {
+                    let mut stats = statistics.write();
+                    stats.capital = current_cap;
+                    stats.total_pnl = total_pnl;
+                    stats.total_return_pct = ((current_cap - initial_capital) / initial_capital) * 100.0;
+                    stats.position_stats = pos_stats;
+                    stats.risk_metrics = risk_manager.get_metrics();
+                }
                 
                 // Update current capital
-                *current_capital.write() = current_cap;
+                {
+                    *current_capital.write() = current_cap;
+                }
                 last_capital = current_cap;
                 
                 tokio::time::sleep(Duration::from_secs(1)).await;

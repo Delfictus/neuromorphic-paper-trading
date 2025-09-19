@@ -92,7 +92,7 @@ impl OrderBook {
         if update.first_update_id > self.last_update_id + 1 {
             return Err(ExchangeError::SequenceGap {
                 expected: self.last_update_id + 1,
-                actual: update.first_update_id,
+                received: update.first_update_id,
             });
         }
         

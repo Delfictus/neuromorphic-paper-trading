@@ -369,10 +369,11 @@ impl OrderManager {
                 if order.is_expired() {
                     order.status = OrderStatus::Expired;
                     
+                    let order_id = order.id.clone();
                     self.active_orders.remove(&order.id);
                     self.orders.insert(order.id.clone(), order);
                     
-                    self.event_sender.send(OrderEvent::Expired(order.id.clone()))?;
+                    self.event_sender.send(OrderEvent::Expired(order_id))?;
                 }
             }
         }
@@ -415,7 +416,7 @@ impl OrderManager {
         take_profit: f64,
     ) -> Result<(String, String, String)> {
         // Create main order
-        let mut main_order = if let Some(price) = entry_price {
+        let main_order = if let Some(price) = entry_price {
             Order::limit(symbol.clone(), exchange, side, quantity, price)
         } else {
             Order::market(symbol.clone(), exchange, side, quantity)

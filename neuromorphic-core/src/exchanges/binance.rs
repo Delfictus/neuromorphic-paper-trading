@@ -1,8 +1,20 @@
 //! Binance exchange connector
 
-use super::{ExchangeConnector, ExchangeError, Exchange, Symbol, Side, UniversalMarketData, UniversalTrade};
-use crate::event_bus::{TradeData, QuoteData, OrderBookData};
+use super::{ExchangeConnector, ExchangeError, ExchangeResult, Exchange, Symbol, Side, UniversalMarketData, UniversalTrade, UniversalQuote, UniversalOrderBook};
 use async_trait::async_trait;
+
+#[derive(Clone)]
+pub struct BinanceConfig {
+    pub base_url: String,
+}
+
+impl Default for BinanceConfig {
+    fn default() -> Self {
+        Self {
+            base_url: "wss://stream.binance.com:9443/ws".to_string(),
+        }
+    }
+}
 use anyhow::Result;
 use dashmap::DashMap;
 use futures_util::{StreamExt, SinkExt};
@@ -114,7 +126,7 @@ impl BinanceWebSocket {
         println!("Connecting to Binance...");
         
         let url = url::Url::parse(&self.url)
-            .map_err(|e| ExchangeError::Connection(e.to_string()))?;
+            .map_err(|e| ExchangeError::Connection { message: e.to_string() })?;
         
         let (ws_stream, _) = connect_async(url).await?;
         println!("Connected to Binance WebSocket");
@@ -202,7 +214,7 @@ impl BinanceWebSocket {
                 }
             }
         }
-        Err(ExchangeError::Connection("No trade received".to_string()))
+        Err(ExchangeError::Connection { message: "No trade received".to_string() })
     }
     
     async fn process_messages(&mut self) {
@@ -247,19 +259,22 @@ impl BinanceWebSocket {
 
 #[async_trait]
 impl ExchangeConnector for BinanceWebSocket {
-    async fn connect(&mut self) -> Result<()> {
-        self.connect_ws().await?;
+    type Config = BinanceConfig;
+    
+    async fn connect(config: Self::Config) -> ExchangeResult<Self> {
+        let mut instance = Self::new();
+        instance.url = config.base_url;
+        instance.connect_ws().await?;
+        Ok(instance)
+    }
+    
+    async fn disconnect(&self) -> ExchangeResult<()> {
+        // Note: In a real implementation, this would need proper shutdown coordination
+        // For now, just return success as the connection will be dropped
         Ok(())
     }
     
-    async fn disconnect(&mut self) -> Result<()> {
-        if let Some(mut ws) = self.ws_stream.take() {
-            let _ = ws.close(None).await;
-        }
-        Ok(())
-    }
-    
-    async fn subscribe(&mut self, symbols: Vec<&str>) -> Result<()> {
+    async fn subscribe(&mut self, symbols: Vec<&str>) -> ExchangeResult<()> {
         self.subscribe_multiple(symbols).await?;
         Ok(())
     }
@@ -268,12 +283,77 @@ impl ExchangeConnector for BinanceWebSocket {
         self.data_receiver.write().try_recv().ok()
     }
     
-    async fn start(&mut self) -> Result<()> {
+    async fn start(&mut self) -> ExchangeResult<()> {
         self.process_messages().await;
         Ok(())
     }
     
     fn name(&self) -> &str {
         "Binance"
+    }
+
+    // Stub implementations for trading functionality - to be implemented later
+    async fn get_account_info(&self) -> ExchangeResult<super::AccountInfo> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_balances(&self) -> ExchangeResult<Vec<super::Balance>> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_balance(&self, _asset: &str) -> ExchangeResult<Option<super::Balance>> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn place_order(&self, _order: super::OrderRequest) -> ExchangeResult<super::UniversalOrder> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn cancel_order(&self, _order_id: &str) -> ExchangeResult<()> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn cancel_all_orders(&self, _symbol: Option<&Symbol>) -> ExchangeResult<Vec<String>> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_order(&self, _order_id: &str) -> ExchangeResult<super::UniversalOrder> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_open_orders(&self, _symbol: Option<&Symbol>) -> ExchangeResult<Vec<super::UniversalOrder>> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_order_history(&self, _symbol: Option<&Symbol>, _limit: Option<u32>) -> ExchangeResult<Vec<super::UniversalOrder>> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_trade_history(&self, _symbol: Option<&Symbol>, _limit: Option<u32>) -> ExchangeResult<Vec<super::TradeExecution>> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_ticker(&self, _symbol: &Symbol) -> ExchangeResult<super::UniversalTicker> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_orderbook(&self, _symbol: &Symbol, _limit: Option<u32>) -> ExchangeResult<UniversalOrderBook> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_recent_trades(&self, _symbol: &Symbol, _limit: Option<u32>) -> ExchangeResult<Vec<UniversalTrade>> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_klines(&self, _symbol: &Symbol, _interval: super::KlineInterval, _start_time: Option<chrono::DateTime<chrono::Utc>>, _end_time: Option<chrono::DateTime<chrono::Utc>>, _limit: Option<u32>) -> ExchangeResult<Vec<super::UniversalKline>> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn ping(&self) -> ExchangeResult<u64> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
+    }
+
+    async fn get_exchange_info(&self) -> ExchangeResult<super::ExchangeInfo> {
+        Err(ExchangeError::Internal { message: "Not implemented".to_string() })
     }
 }

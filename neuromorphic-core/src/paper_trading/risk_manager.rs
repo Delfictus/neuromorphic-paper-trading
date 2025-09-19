@@ -168,7 +168,7 @@ impl PortfolioHeatMap {
         }
         
         let total_value: f64 = positions.iter().map(|(_, v)| v.abs()).sum();
-        let mut max_concentration = 0.0;
+        let mut max_concentration: f64 = 0.0;
         
         for (_, value) in positions {
             let concentration = value.abs() / total_value;
@@ -208,8 +208,8 @@ impl RiskManager {
     /// Check if order should be allowed
     pub fn check_order(
         &self,
-        symbol: &Symbol,
-        side: Side,
+        _symbol: &Symbol,
+        _side: Side,
         quantity: f64,
         price: f64,
         current_capital: f64,
@@ -288,7 +288,7 @@ impl RiskManager {
     /// Calculate optimal position size
     pub fn calculate_position_size(
         &self,
-        symbol: &Symbol,
+        _symbol: &Symbol,
         current_capital: f64,
         confidence: f64,
     ) -> f64 {

@@ -1,8 +1,9 @@
-[registries]
-ares = { index = "https://github.com/delfictus/ares-registry.git" }
-
-[source.ares]
-registry = "https://github.com/delfictus/ares-registry.git"
+[build]
+jobs = 1
 
 [net]
 git-fetch-with-cli = true
+
+[profile.dev]
+debug = 0
+opt-level = 0

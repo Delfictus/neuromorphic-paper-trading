@@ -25,6 +25,9 @@ tokio-tungstenite = { workspace = true }
 reqwest = { workspace = true }
 url = { workspace = true }
 
+# Additional dependencies
+ordered-float = "4.0"
+
 # ARES dependencies
 ares-spike-encoding = { workspace = true }
 ares-neuromorphic-core = { workspace = true }

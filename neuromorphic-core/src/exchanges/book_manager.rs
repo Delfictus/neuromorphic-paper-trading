@@ -48,7 +48,7 @@ impl OrderBookManager {
             .map(|s| OrderBook::fetch_snapshot(s))
             .collect();
         
-        let snapshots = futures::future::join_all(futures).await;
+        let snapshots = futures_util::future::join_all(futures).await;
         
         for (symbol, snapshot_result) in symbols.iter().zip(snapshots) {
             match snapshot_result {

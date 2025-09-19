@@ -45,5 +45,5 @@ ares-spike-encoding = { git = "https://github.com/Delfictus/ARES-51.git" }
 ares-neuromorphic-core = { git = "https://github.com/Delfictus/ARES-51.git" }
 ares-csf-core = { git = "https://github.com/Delfictus/ARES-51.git" }
 
-[workspace.dev-dependencies]
+# Dev dependencies
 tokio-test = "0.4"

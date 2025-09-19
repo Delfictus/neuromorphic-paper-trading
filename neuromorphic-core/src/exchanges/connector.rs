@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 use chrono::{DateTime, Utc};
 
-use super::types::{Symbol, Exchange, Side, OrderType, TimeInForce, UniversalTrade, UniversalQuote, UniversalOrderBook};
+use super::types::{Symbol, Exchange, Side, OrderType, TimeInForce, UniversalTrade, UniversalQuote, UniversalOrderBook, UniversalMarketData};
 
 /// Custom result type for exchange operations
 pub type ExchangeResult<T> = Result<T, ExchangeError>;
@@ -25,6 +25,12 @@ pub enum ExchangeError {
     
     #[error("Rate limit exceeded: {retry_after:?}")]
     RateLimit { retry_after: Option<u64> },
+    
+    #[error("Parse error: {0}")]
+    Parse(String),
+    
+    #[error("Sequence gap detected: expected {expected}, got {received}")]
+    SequenceGap { expected: u64, received: u64 },
     
     #[error("Invalid request: {details}")]
     InvalidRequest { details: String },
@@ -46,6 +52,24 @@ pub enum ExchangeError {
     
     #[error("Internal error: {message}")]
     Internal { message: String },
+}
+
+impl From<serde_json::Error> for ExchangeError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::Parse(err.to_string())
+    }
+}
+
+impl From<anyhow::Error> for ExchangeError {
+    fn from(err: anyhow::Error) -> Self {
+        Self::Internal { message: err.to_string() }
+    }
+}
+
+impl From<tokio_tungstenite::tungstenite::Error> for ExchangeError {
+    fn from(err: tokio_tungstenite::tungstenite::Error) -> Self {
+        Self::Connection { message: err.to_string() }
+    }
 }
 
 /// Order status enumeration
@@ -385,6 +409,18 @@ pub trait ExchangeConnector: Send + Sync {
     
     /// Get recent trades for a symbol
     async fn get_recent_trades(&self, symbol: &Symbol, limit: Option<u32>) -> ExchangeResult<Vec<UniversalTrade>>;
+    
+    /// Subscribe to real-time market data streams
+    async fn subscribe(&mut self, symbols: Vec<&str>) -> ExchangeResult<()>;
+    
+    /// Try to receive market data (non-blocking)
+    fn try_recv(&mut self) -> Option<UniversalMarketData>;
+    
+    /// Start the connection processing
+    async fn start(&mut self) -> ExchangeResult<()>;
+    
+    /// Get the exchange name
+    fn name(&self) -> &str;
     
     /// Get historical kline/candlestick data
     async fn get_klines(

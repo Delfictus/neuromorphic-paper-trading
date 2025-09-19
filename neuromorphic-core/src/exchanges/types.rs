@@ -47,7 +47,7 @@ impl fmt::Display for Symbol {
 }
 
 /// Order side
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Side {
     Buy,
     Sell,
@@ -71,7 +71,7 @@ pub enum OrderType {
 }
 
 /// Exchange identifier
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Exchange {
     Binance,
     Coinbase,

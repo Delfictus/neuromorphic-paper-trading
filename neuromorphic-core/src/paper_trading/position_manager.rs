@@ -12,7 +12,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub enum PositionStatus {
     Open,
     Closed,
-    Partially Closed,
+    PartiallyClosed,
 }
 
 /// Individual position
@@ -114,7 +114,7 @@ impl Position {
             return self.realized_pnl;
         }
         
-        let close_ratio = quantity / self.quantity;
+        let _close_ratio = quantity / self.quantity;
         
         let price_diff = match self.side {
             Side::Buy => exit_price - self.entry_price,
@@ -126,7 +126,7 @@ impl Position {
         self.quantity -= quantity;
         self.commission += commission;
         self.slippage += slippage;
-        self.status = PositionStatus::PartialClosed;
+        self.status = PositionStatus::PartiallyClosed;
         
         partial_pnl
     }

@@ -173,7 +173,8 @@ impl BinanceWebSocketManager {
             StreamType::OrderBook => format!("{}@depth", symbol),
             StreamType::Ticker => format!("{}@ticker", symbol),
             StreamType::Kline => {
-                let interval = subscription.interval.as_ref().unwrap_or(&"1m".to_string());
+                let default_interval = "1m".to_string();
+                let interval = subscription.interval.as_ref().unwrap_or(&default_interval);
                 format!("{}@kline_{}", symbol, interval)
             }
             StreamType::UserData => {
