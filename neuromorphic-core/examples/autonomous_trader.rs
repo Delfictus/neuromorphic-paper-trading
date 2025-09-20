@@ -32,16 +32,10 @@ async fn main() -> Result<()> {
         trading_config: PaperTradingConfig {
             initial_capital: 100000.0,
             commission_rate: 0.001,
-            max_position_size: 0.05,
-            stop_loss_pct: 0.03,
-            take_profit_pct: 0.08,
-            risk_free_rate: 0.02,
-            max_positions: 8,
-            position_sizing_method: "fixed_fractional".to_string(),
             enable_stop_loss: true,
             enable_take_profit: true,
-            enable_trailing_stop: true,
-            update_interval_ms: 1000,
+            update_interval: std::time::Duration::from_millis(1000),
+            ..Default::default()
         },
         max_positions: 12,
         max_daily_trades: 25,

@@ -615,20 +615,6 @@ impl PaperTradingEngine {
     }
 }
 
-/// Clone implementation for config
-impl Clone for PaperTradingConfig {
-    fn clone(&self) -> Self {
-        Self {
-            initial_capital: self.initial_capital,
-            commission_rate: self.commission_rate,
-            slippage_model: self.slippage_model.clone(),
-            risk_limits: self.risk_limits.clone(),
-            enable_stop_loss: self.enable_stop_loss,
-            enable_take_profit: self.enable_take_profit,
-            update_interval: self.update_interval,
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

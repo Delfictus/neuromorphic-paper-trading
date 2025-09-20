@@ -6,7 +6,6 @@ use crate::exchanges::{Symbol, Side};
 use chrono::Utc;
 use async_trait::async_trait;
 
-#[derive(Clone)]
 pub struct StrategyEngine {
     strategies: Vec<Box<dyn TradingStrategy>>,
     market_history: HashMap<String, Vec<MarketData>>,
@@ -93,7 +92,7 @@ impl StrategyEngine {
         self.update_history(data).await;
         
         let history = self.market_history
-            .get(&data.symbol.name)
+            .get(data.symbol.as_str())
             .map(|h| h.as_slice())
             .unwrap_or(&[]);
 

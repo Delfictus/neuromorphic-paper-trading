@@ -34,6 +34,7 @@ hyper = "0.14"
 
 # Market scanning dependencies
 env_logger = "0.10"
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 # ARES dependencies
 ares-spike-encoding = { workspace = true }

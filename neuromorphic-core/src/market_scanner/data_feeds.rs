@@ -9,7 +9,6 @@ use crate::exchanges::{Symbol, Exchange};
 use super::{MarketData, ScannerConfig};
 use chrono::Utc;
 
-#[derive(Debug, Clone)]
 pub struct DataFeedManager {
     config: ScannerConfig,
     feeds: HashMap<Exchange, Box<dyn MarketDataFeed>>,
@@ -139,37 +138,38 @@ impl DataFeedManager {
     pub async fn start_all_feeds(&self) -> Result<broadcast::Receiver<MarketData>> {
         let (tx, rx) = broadcast::channel(10000);
         
-        let symbol_universe = self.symbol_universe.clone();
-        let tx = Arc::new(tx);
-        
         for exchange in &self.config.included_exchanges {
-            if let Some(feed) = self.feeds.get(exchange) {
-                let feed = feed.clone();
-                let tx = tx.clone();
-                let symbol_universe = symbol_universe.clone();
-                
-                tokio::spawn(async move {
-                    let mut interval = interval(Duration::from_millis(1000));
+            match exchange {
+                Exchange::NYSE | Exchange::NASDAQ => {
+                    let client = self.client.clone();
+                    let tx = tx.clone();
+                    let symbol_universe = self.symbol_universe.clone();
                     
-                    loop {
-                        interval.tick().await;
+                    tokio::spawn(async move {
+                        let feed = YahooFinanceFeed::new(client);
+                        let mut interval = interval(Duration::from_millis(1000));
                         
-                        if let Ok(market_data) = feed.get_market_data().await {
-                            for data in market_data {
-                                let _ = tx.send(data);
+                        loop {
+                            interval.tick().await;
+                            
+                            if let Ok(market_data) = feed.get_market_data().await {
+                                for data in market_data {
+                                    let _ = tx.send(data);
+                                }
                             }
-                        }
-                        
-                        if let Ok(universe) = feed.get_symbol_universe().await {
-                            let mut symbols = symbol_universe.write().await;
-                            for symbol in universe {
-                                if !symbols.contains(&symbol) {
-                                    symbols.push(symbol);
+                            
+                            if let Ok(universe) = feed.get_symbol_universe().await {
+                                let mut symbols = symbol_universe.write().await;
+                                for symbol in universe {
+                                    if !symbols.contains(&symbol) {
+                                        symbols.push(symbol);
+                                    }
                                 }
                             }
                         }
-                    }
-                });
+                    });
+                }
+                _ => {}
             }
         }
         

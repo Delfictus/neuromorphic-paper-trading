@@ -105,6 +105,15 @@ Designed to integrate with the full ARES-51 neuromorphic engine once available.
 - Lock-free data structures where possible using DashMap and parking_lot
 - Configurable update intervals to balance performance vs accuracy
 
+## Development Guidelines
+
+### Code Modification Rules
+- **NEVER edit imported external crates** - Only modify code within this repository
+- **External dependencies** (from crates.io, git dependencies, workspace dependencies) should not be modified
+- **Focus changes on local modules** - `paper_trading/`, `exchanges/`, `market_scanner/`, `metrics/`, etc.
+- **If external crate issues arise** - Update dependency versions in Cargo.toml or find alternative approaches
+- **Respect dependency boundaries** - Use public APIs of external crates as intended
+
 ## Git Repository Management
 
 ### Persistent Permissions

@@ -77,7 +77,7 @@ impl MarketScanner {
 
     pub async fn update_market_data(&self, data: MarketData) -> Result<()> {
         let mut cache = self.market_cache.write().await;
-        cache.insert(data.symbol.name.clone(), data);
+        cache.insert(data.symbol.as_str().to_string(), data);
         Ok(())
     }
 

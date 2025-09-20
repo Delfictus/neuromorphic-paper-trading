@@ -148,10 +148,9 @@ impl StockScreener {
             }
         }
 
+        // Sort by basic criteria for now - full scoring would require async sort
         filtered_symbols.sort_by(|a, b| {
-            let score_a = self.calculate_screening_score(a).unwrap_or(0.0);
-            let score_b = self.calculate_screening_score(b).unwrap_or(0.0);
-            score_b.partial_cmp(&score_a).unwrap()
+            b.change_24h.abs().partial_cmp(&a.change_24h.abs()).unwrap()
         });
 
         Ok(filtered_symbols)
@@ -295,7 +294,7 @@ impl StockScreener {
     }
 
     async fn calculate_technical_score(&self, data: &MarketData) -> Result<f64> {
-        let mut score = 0.5;
+        let mut score: f64 = 0.5;
 
         if data.price > (data.high + data.low) / 2.0 {
             score += 0.2;

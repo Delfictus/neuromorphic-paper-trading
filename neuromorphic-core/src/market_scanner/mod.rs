@@ -171,7 +171,7 @@ impl MarketScannerService {
             
             loop {
                 tokio::select! {
-                    Some(market_update) = data_stream.recv() => {
+                    Ok(market_update) = data_stream.recv() => {
                         {
                             let mut data = market_data.write().await;
                             data.insert(market_update.symbol.clone(), market_update.clone());

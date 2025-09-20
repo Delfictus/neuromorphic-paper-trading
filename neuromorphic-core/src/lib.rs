@@ -203,7 +203,7 @@ impl AutonomousTradingSystem {
                                 println!("✅ Executed trade #{}: {} {} @ ${:.2} (confidence: {:.1}%)",
                                         daily_trades,
                                         opportunity.strategy,
-                                        opportunity.symbol.name,
+                                        opportunity.symbol.as_str(),
                                         opportunity.entry_price,
                                         opportunity.confidence * 100.0);
                             }
@@ -213,7 +213,7 @@ impl AutonomousTradingSystem {
                         }
                     } else {
                         println!("⏭️  Skipped opportunity: {} {} (confidence: {:.1}%, reason: filtering)",
-                                opportunity.symbol.name,
+                                opportunity.symbol.as_str(),
                                 opportunity.strategy,
                                 opportunity.confidence * 100.0);
                     }
@@ -241,9 +241,9 @@ impl AutonomousTradingSystem {
         }
 
         let stats = self.paper_trader.get_statistics();
-        let current_positions = stats.positions_count;
+        let current_positions = stats.position_stats.open_positions;
         
-        if current_positions >= self.config.max_positions {
+        if current_positions >= self.config.max_positions as u64 {
             return false;
         }
 
@@ -258,22 +258,21 @@ impl AutonomousTradingSystem {
     /// Execute a trading opportunity
     async fn execute_opportunity(&self, opportunity: &TradingOpportunity) -> Result<()> {
         let signal_action = match opportunity.expected_move {
-            x if x > 0.0 => SignalAction::Buy,
-            x if x < 0.0 => SignalAction::Sell,
+            x if x > 0.0 => SignalAction::Buy { size_hint: Some(opportunity.position_size) },
+            x if x < 0.0 => SignalAction::Sell { size_hint: Some(opportunity.position_size) },
             _ => SignalAction::Hold,
         };
 
         let signal = TradingSignal {
             symbol: opportunity.symbol.clone(),
+            exchange: Exchange::NYSE, // Default exchange
             action: signal_action,
             confidence: opportunity.confidence,
             urgency: 0.8,
             metadata: SignalMetadata {
-                pattern_type: opportunity.strategy.clone(),
                 spike_count: 100,
+                pattern_strength: opportunity.confidence,
                 volatility: opportunity.risk_score,
-                strength: opportunity.confidence,
-                prediction_horizon: opportunity.time_horizon.clone(),
                 market_regime: "autonomous".to_string(),
             },
         };
@@ -297,13 +296,13 @@ impl AutonomousTradingSystem {
 
         println!("\n📈 AUTONOMOUS TRADING STATUS");
         println!("💰 Portfolio: ${:.2} | P&L: {:.2}% | Positions: {}",
-                stats.capital, stats.total_return_pct, stats.positions_count);
+                stats.capital, stats.total_return_pct, stats.position_stats.open_positions);
         println!("📊 Symbols tracked: {} | Opportunities: {} | Market volatility: {:.1}%",
                 market_metrics.total_symbols_tracked,
                 market_metrics.opportunities_detected,
                 market_metrics.market_volatility * 100.0);
         println!("🎯 Win rate: {:.1}% | Sharpe: {:.2} | Max drawdown: {:.1}%",
-                stats.win_rate, stats.sharpe_ratio, stats.max_drawdown);
+                stats.position_stats.win_rate, stats.risk_metrics.sharpe_ratio, stats.risk_metrics.max_drawdown);
         println!("🔄 Market regime: {:?} | Sentiment: {:.2}\n",
                 market_metrics.market_regime, market_metrics.overall_sentiment);
     }

@@ -4,6 +4,7 @@
 //! prediction engines for signal generation.
 
 use anyhow::Result;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal;
 use tracing::{info, warn};
@@ -40,9 +41,13 @@ async fn main() -> Result<()> {
     engine.start().await?;
     info!("✅ Paper trading engine started");
 
+    // Wrap engine in Arc to share between tasks
+    let engine = Arc::new(engine);
+
     // Simulate some market data and trading signals
+    let engine_clone = engine.clone();
     tokio::spawn(async move {
-        simulate_trading_session(&engine).await;
+        simulate_trading_session(&*engine_clone).await;
     });
 
     // Run until interrupted
@@ -88,9 +93,9 @@ async fn simulate_trading_session(engine: &PaperTradingEngine) {
 
     for i in 0..1000 {
         // Simulate price movements
-        price_btc += (rand::random::<f64>() - 0.5) * 100.0;
-        price_eth += (rand::random::<f64>() - 0.5) * 10.0;
-        price_sol += (rand::random::<f64>() - 0.5) * 2.0;
+        price_btc += (rand::random_f64() - 0.5) * 100.0;
+        price_eth += (rand::random_f64() - 0.5) * 10.0;
+        price_sol += (rand::random_f64() - 0.5) * 2.0;
 
         // Update prices
         engine.update_price(symbols[0].clone(), price_btc);
@@ -100,10 +105,10 @@ async fn simulate_trading_session(engine: &PaperTradingEngine) {
         // Generate trading signals every 10 iterations
         if i % 10 == 0 {
             let symbol = &symbols[i % symbols.len()];
-            let confidence = 0.6 + (rand::random::<f64>() * 0.3);
-            let urgency = rand::random::<f64>();
+            let confidence = 0.6 + (rand::random_f64() * 0.3);
+            let urgency = rand::random_f64();
 
-            let action = match rand::random::<u32>() % 4 {
+            let action = match rand::random_u32() % 4 {
                 0 => SignalAction::Buy { size_hint: Some(1000.0) },
                 1 => SignalAction::Sell { size_hint: Some(500.0) },
                 2 => SignalAction::Close { position_id: None },
@@ -117,7 +122,7 @@ async fn simulate_trading_session(engine: &PaperTradingEngine) {
                 confidence,
                 urgency,
                 metadata: SignalMetadata {
-                    spike_count: rand::random::<u64>() % 1000,
+                    spike_count: (rand::random_u32() as u64) % 1000,
                     pattern_strength: confidence,
                     market_regime: "trending".to_string(),
                     volatility: 0.02,
@@ -139,16 +144,23 @@ mod rand {
     use std::hash::{Hash, Hasher};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    pub fn random<T>() -> T 
-    where 
-        T: From<u64>
-    {
+    pub fn random_f64() -> f64 {
         let mut hasher = DefaultHasher::new();
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos()
             .hash(&mut hasher);
-        T::from(hasher.finish())
+        (hasher.finish() as f64) / (u64::MAX as f64)
+    }
+
+    pub fn random_u32() -> u32 {
+        let mut hasher = DefaultHasher::new();
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+            .hash(&mut hasher);
+        hasher.finish() as u32
     }
 }
