@@ -252,7 +252,7 @@ pub struct OrderManager {
 }
 
 /// Slippage model for realistic execution
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub enum SlippageModel {
     Fixed(f64),
     Percentage(f64),

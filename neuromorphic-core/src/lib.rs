@@ -7,6 +7,7 @@ pub mod paper_trading;
 pub mod exchanges;
 pub mod metrics;
 pub mod api;
+pub mod market_scanner;
 
 // Re-export main types for easy access
 pub use paper_trading::{
@@ -16,6 +17,10 @@ pub use paper_trading::{
 pub use exchanges::{Symbol, Exchange, Side, OrderType};
 pub use metrics::MetricsCollector;
 pub use api::MetricsApiServer;
+pub use market_scanner::{
+    MarketScannerService, MarketData, TradingOpportunity, ScannerConfig,
+    StockScreener, StrategyEngine, MarketAnalytics
+};
 
 use anyhow::Result;
 use std::sync::Arc;
@@ -24,6 +29,25 @@ use std::sync::Arc;
 pub struct NeuromorphicPaperTrader {
     engine: PaperTradingEngine,
     metrics_collector: Arc<MetricsCollector>,
+}
+
+/// Autonomous trading system that continuously monitors and trades the market
+pub struct AutonomousTradingSystem {
+    paper_trader: NeuromorphicPaperTrader,
+    market_scanner: MarketScannerService,
+    config: AutonomousConfig,
+}
+
+#[derive(Debug, Clone)]
+pub struct AutonomousConfig {
+    pub scanner_config: ScannerConfig,
+    pub trading_config: PaperTradingConfig,
+    pub max_positions: usize,
+    pub max_daily_trades: usize,
+    pub risk_per_trade: f64,
+    pub enable_auto_trading: bool,
+    pub min_opportunity_confidence: f64,
+    pub portfolio_heat: f64,
 }
 
 impl NeuromorphicPaperTrader {
@@ -95,6 +119,209 @@ impl NeuromorphicPaperTrader {
         tokio::spawn(async move {
             api_server.start().await;
         });
+    }
+}
+
+impl Default for AutonomousConfig {
+    fn default() -> Self {
+        Self {
+            scanner_config: ScannerConfig::default(),
+            trading_config: PaperTradingConfig::default(),
+            max_positions: 10,
+            max_daily_trades: 50,
+            risk_per_trade: 0.02,
+            enable_auto_trading: true,
+            min_opportunity_confidence: 0.75,
+            portfolio_heat: 0.1,
+        }
+    }
+}
+
+impl AutonomousTradingSystem {
+    /// Create a new autonomous trading system
+    pub fn new(config: AutonomousConfig) -> Self {
+        let paper_trader = NeuromorphicPaperTrader::new(config.trading_config.clone());
+        let market_scanner = MarketScannerService::new(config.scanner_config.clone());
+
+        Self {
+            paper_trader,
+            market_scanner,
+            config,
+        }
+    }
+
+    /// Start the autonomous trading system
+    pub async fn start(&mut self) -> Result<()> {
+        println!("🤖 Starting Autonomous Neuromorphic Trading System");
+        
+        self.paper_trader.start().await?;
+        self.paper_trader.start_metrics_api(3002).await;
+        
+        let (market_stream, opportunity_stream) = self.market_scanner.start().await?;
+        
+        self.start_trading_loop(market_stream, opportunity_stream).await?;
+        
+        Ok(())
+    }
+
+    /// Start the main trading loop
+    async fn start_trading_loop(
+        &self,
+        mut market_stream: tokio::sync::broadcast::Receiver<MarketData>,
+        mut opportunity_stream: tokio::sync::broadcast::Receiver<TradingOpportunity>,
+    ) -> Result<()> {
+        let mut daily_trades = 0;
+        let mut last_reset = chrono::Utc::now().date_naive();
+        
+        println!("📊 Market scanner started - monitoring {} exchanges", 
+                 self.config.scanner_config.included_exchanges.len());
+        println!("🎯 Auto-trading: {} | Min confidence: {:.0}%", 
+                 if self.config.enable_auto_trading { "ENABLED" } else { "DISABLED" },
+                 self.config.min_opportunity_confidence * 100.0);
+
+        loop {
+            tokio::select! {
+                Ok(market_data) = market_stream.recv() => {
+                    self.paper_trader.update_market_price(
+                        market_data.symbol.clone(), 
+                        market_data.price
+                    );
+                }
+                
+                Ok(opportunity) = opportunity_stream.recv() => {
+                    let today = chrono::Utc::now().date_naive();
+                    if today != last_reset {
+                        daily_trades = 0;
+                        last_reset = today;
+                        println!("📅 Daily trade counter reset");
+                    }
+
+                    if self.should_execute_trade(&opportunity, daily_trades).await {
+                        match self.execute_opportunity(&opportunity).await {
+                            Ok(_) => {
+                                daily_trades += 1;
+                                println!("✅ Executed trade #{}: {} {} @ ${:.2} (confidence: {:.1}%)",
+                                        daily_trades,
+                                        opportunity.strategy,
+                                        opportunity.symbol.name,
+                                        opportunity.entry_price,
+                                        opportunity.confidence * 100.0);
+                            }
+                            Err(e) => {
+                                println!("❌ Failed to execute trade: {}", e);
+                            }
+                        }
+                    } else {
+                        println!("⏭️  Skipped opportunity: {} {} (confidence: {:.1}%, reason: filtering)",
+                                opportunity.symbol.name,
+                                opportunity.strategy,
+                                opportunity.confidence * 100.0);
+                    }
+                }
+                
+                _ = tokio::time::sleep(tokio::time::Duration::from_secs(60)) => {
+                    self.print_status().await;
+                }
+            }
+        }
+    }
+
+    /// Determine if we should execute a trading opportunity
+    async fn should_execute_trade(&self, opportunity: &TradingOpportunity, daily_trades: usize) -> bool {
+        if !self.config.enable_auto_trading {
+            return false;
+        }
+
+        if opportunity.confidence < self.config.min_opportunity_confidence {
+            return false;
+        }
+
+        if daily_trades >= self.config.max_daily_trades {
+            return false;
+        }
+
+        let stats = self.paper_trader.get_statistics();
+        let current_positions = stats.positions_count;
+        
+        if current_positions >= self.config.max_positions {
+            return false;
+        }
+
+        let portfolio_risk = (current_positions as f64 * self.config.risk_per_trade).min(self.config.portfolio_heat);
+        if portfolio_risk >= self.config.portfolio_heat {
+            return false;
+        }
+
+        true
+    }
+
+    /// Execute a trading opportunity
+    async fn execute_opportunity(&self, opportunity: &TradingOpportunity) -> Result<()> {
+        let signal_action = match opportunity.expected_move {
+            x if x > 0.0 => SignalAction::Buy,
+            x if x < 0.0 => SignalAction::Sell,
+            _ => SignalAction::Hold,
+        };
+
+        let signal = TradingSignal {
+            symbol: opportunity.symbol.clone(),
+            action: signal_action,
+            confidence: opportunity.confidence,
+            urgency: 0.8,
+            metadata: SignalMetadata {
+                pattern_type: opportunity.strategy.clone(),
+                spike_count: 100,
+                volatility: opportunity.risk_score,
+                strength: opportunity.confidence,
+                prediction_horizon: opportunity.time_horizon.clone(),
+                market_regime: "autonomous".to_string(),
+            },
+        };
+
+        self.paper_trader.process_prediction_signal(signal).await
+    }
+
+    /// Print current system status
+    async fn print_status(&self) {
+        let stats = self.paper_trader.get_statistics();
+        let market_metrics = self.market_scanner.get_market_metrics().await
+            .unwrap_or_else(|_| market_scanner::MarketMetrics {
+                total_symbols_tracked: 0,
+                opportunities_detected: 0,
+                market_volatility: 0.0,
+                sector_performance: std::collections::HashMap::new(),
+                trending_symbols: Vec::new(),
+                market_regime: market_scanner::MarketRegime::Consolidation,
+                overall_sentiment: 0.0,
+            });
+
+        println!("\n📈 AUTONOMOUS TRADING STATUS");
+        println!("💰 Portfolio: ${:.2} | P&L: {:.2}% | Positions: {}",
+                stats.capital, stats.total_return_pct, stats.positions_count);
+        println!("📊 Symbols tracked: {} | Opportunities: {} | Market volatility: {:.1}%",
+                market_metrics.total_symbols_tracked,
+                market_metrics.opportunities_detected,
+                market_metrics.market_volatility * 100.0);
+        println!("🎯 Win rate: {:.1}% | Sharpe: {:.2} | Max drawdown: {:.1}%",
+                stats.win_rate, stats.sharpe_ratio, stats.max_drawdown);
+        println!("🔄 Market regime: {:?} | Sentiment: {:.2}\n",
+                market_metrics.market_regime, market_metrics.overall_sentiment);
+    }
+
+    /// Get top opportunities currently available
+    pub async fn get_top_opportunities(&self, limit: usize) -> Result<Vec<TradingOpportunity>> {
+        self.market_scanner.get_top_opportunities(limit).await
+    }
+
+    /// Get current market metrics
+    pub async fn get_market_metrics(&self) -> Result<market_scanner::MarketMetrics> {
+        self.market_scanner.get_market_metrics().await
+    }
+
+    /// Stop the autonomous trading system
+    pub async fn stop(&self) -> Result<()> {
+        println!("🛑 Stopping Autonomous Trading System");
+        self.paper_trader.stop().await
     }
 }
 

@@ -42,6 +42,7 @@ pub struct SignalMetadata {
 }
 
 /// Paper trading configuration
+#[derive(Debug, Clone)]
 pub struct PaperTradingConfig {
     pub initial_capital: f64,
     pub commission_rate: f64,

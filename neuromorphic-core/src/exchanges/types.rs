@@ -78,6 +78,8 @@ pub enum Exchange {
     Kraken,
     Bitstamp,
     Gemini,
+    NYSE,
+    NASDAQ,
 }
 
 impl fmt::Display for Exchange {
@@ -88,6 +90,8 @@ impl fmt::Display for Exchange {
             Exchange::Kraken => write!(f, "Kraken"),
             Exchange::Bitstamp => write!(f, "Bitstamp"),
             Exchange::Gemini => write!(f, "Gemini"),
+            Exchange::NYSE => write!(f, "NYSE"),
+            Exchange::NASDAQ => write!(f, "NASDAQ"),
         }
     }
 }
