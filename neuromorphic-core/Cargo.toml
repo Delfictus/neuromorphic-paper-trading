@@ -28,6 +28,10 @@ url = { workspace = true }
 # Additional dependencies
 ordered-float = "4.0"
 
+# Grafana API dependencies
+warp = "0.3"
+hyper = "0.14"
+
 # ARES dependencies
 ares-spike-encoding = { workspace = true }
 ares-neuromorphic-core = { workspace = true }

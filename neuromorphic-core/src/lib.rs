@@ -5,6 +5,8 @@
 
 pub mod paper_trading;
 pub mod exchanges;
+pub mod metrics;
+pub mod api;
 
 // Re-export main types for easy access
 pub use paper_trading::{
@@ -12,19 +14,25 @@ pub use paper_trading::{
     SignalMetadata, TradingStatistics, PositionManager, OrderManager, RiskManager
 };
 pub use exchanges::{Symbol, Exchange, Side, OrderType};
+pub use metrics::MetricsCollector;
+pub use api::MetricsApiServer;
 
 use anyhow::Result;
+use std::sync::Arc;
 
 /// Main interface for integrating with external prediction engines
 pub struct NeuromorphicPaperTrader {
     engine: PaperTradingEngine,
+    metrics_collector: Arc<MetricsCollector>,
 }
 
 impl NeuromorphicPaperTrader {
     /// Create a new paper trader with configuration
     pub fn new(config: PaperTradingConfig) -> Self {
+        let metrics_collector = Arc::new(MetricsCollector::new());
         Self {
             engine: PaperTradingEngine::new(config),
+            metrics_collector,
         }
     }
 
@@ -40,12 +48,25 @@ impl NeuromorphicPaperTrader {
 
     /// Process a trading signal from an external prediction engine
     pub async fn process_prediction_signal(&self, signal: TradingSignal) -> Result<()> {
-        self.engine.process_signal(signal).await
+        // Record signal metrics
+        self.metrics_collector.record_signal(&signal);
+        
+        // Process the signal
+        let result = self.engine.process_signal(signal).await;
+        
+        // Update portfolio metrics after processing
+        let stats = self.engine.get_statistics();
+        self.metrics_collector.update_portfolio_metrics(&stats);
+        
+        result
     }
 
     /// Update market price for a symbol
     pub fn update_market_price(&self, symbol: Symbol, price: f64) {
-        self.engine.update_price(symbol, price);
+        self.engine.update_price(symbol.clone(), price);
+        
+        // Update market data metrics
+        self.metrics_collector.update_market_data(symbol, price);
     }
 
     /// Get current trading statistics
@@ -61,6 +82,19 @@ impl NeuromorphicPaperTrader {
     /// Get access to risk manager for risk metrics
     pub fn risk_manager(&self) -> &std::sync::Arc<RiskManager> {
         self.engine.risk_manager()
+    }
+
+    /// Get access to metrics collector for Grafana integration
+    pub fn metrics_collector(&self) -> &Arc<MetricsCollector> {
+        &self.metrics_collector
+    }
+
+    /// Start Grafana metrics API server
+    pub async fn start_metrics_api(&self, port: u16) {
+        let api_server = MetricsApiServer::new(self.metrics_collector.clone(), port);
+        tokio::spawn(async move {
+            api_server.start().await;
+        });
     }
 }
 

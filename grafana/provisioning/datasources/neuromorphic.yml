@@ -1,0 +1,13 @@
+apiVersion: 1
+
+datasources:
+  - name: Neuromorphic Metrics
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    url: http://metrics-server:3002
+    isDefault: true
+    editable: true
+    jsonData:
+      database_name: neuromorphic
+      timeout: 30
+    secureJsonData: {}

@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # Neuromorphic Trading Metrics Server
+  metrics-server:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+        WORKDIR /app
+        COPY metrics_server.py .
+        EXPOSE 3002
+        CMD ["python3", "metrics_server.py"]
+    ports:
+      - "3002:3002"
+    networks:
+      - neuromorphic-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3002/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana Dashboard
+  grafana:
+    image: docker.io/grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    networks:
+      - neuromorphic-net
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana:/etc/grafana/provisioning/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    restart: unless-stopped
+    depends_on:
+      metrics-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus Metrics Server (Alternative)
+  prometheus-metrics:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY prometheus_metrics_server.py .
+        EXPOSE 9090
+        CMD ["python3", "prometheus_metrics_server.py"]
+    ports:
+      - "9090:9090"
+    networks:
+      - neuromorphic-net
+    restart: unless-stopped
+    profiles:
+      - prometheus
+
+volumes:
+  grafana-data:
+    driver: local
+
+networks:
+  neuromorphic-net:
+    driver: bridge
