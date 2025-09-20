@@ -1,6 +1,40 @@
 version: '3.8'
 
 services:
+  # Neuromorphic Autonomous Trading System
+  neuromorphic-trader:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM rust:1.75-bullseye as builder
+        WORKDIR /app
+        COPY . .
+        RUN cargo build --release --example autonomous_trader
+        
+        FROM debian:bullseye-slim
+        RUN apt-get update && apt-get install -y \
+          ca-certificates \
+          libssl1.1 \
+          && rm -rf /var/lib/apt/lists/*
+        WORKDIR /app
+        COPY --from=builder /app/target/release/examples/autonomous_trader /app/
+        EXPOSE 3002
+        CMD ["./autonomous_trader"]
+    ports:
+      - "3001:3002"  # Autonomous trader metrics
+    networks:
+      - neuromorphic-net
+    restart: unless-stopped
+    environment:
+      - RUST_LOG=info
+      - RUST_BACKTRACE=1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3002/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
   # Neuromorphic Trading Metrics Server
   metrics-server:
     build:
@@ -42,6 +76,8 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
     restart: unless-stopped
     depends_on:
+      neuromorphic-trader:
+        condition: service_healthy
       metrics-server:
         condition: service_healthy
     healthcheck:
