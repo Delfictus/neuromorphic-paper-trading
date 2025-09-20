@@ -4,6 +4,7 @@ members = [
     "neuromorphic-barter-bridge", 
     "paper-trader-app"
 ]
+
 resolver = "2"
 
 [workspace.dependencies]
