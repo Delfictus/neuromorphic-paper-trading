@@ -16,6 +16,9 @@ This single command will:
 
 - **🤖 Trading System**: Automatically running and monitoring the entire stock market
 - **📈 Grafana Dashboard**: [http://localhost:3000](http://localhost:3000) (admin/admin)
+  - **System Overview**: Default home dashboard with live opportunities
+  - **Autonomous Trading**: Detailed trading performance and portfolio metrics  
+  - **Pre-configured Data Sources**: Automatic connection to all services
 - **📊 Metrics API**: [http://localhost:3002](http://localhost:3002)
 - **🔍 Trading Metrics**: [http://localhost:3001](http://localhost:3001)
 
@@ -47,6 +50,14 @@ docker compose logs -f
 # Restart just the trading engine
 docker compose restart neuromorphic-trader
 ```
+
+## Pre-configured Dashboards
+
+The system comes with ready-to-use Grafana dashboards:
+
+1. **System Overview** (Default Home) - Real-time system status and live opportunities
+2. **Autonomous Trading Dashboard** - Portfolio performance, trading metrics, and strategy analysis
+3. **Pre-configured Data Sources** - Automatic connection to all trading system APIs
 
 ## System Components
 

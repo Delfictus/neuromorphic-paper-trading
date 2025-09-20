@@ -11,3 +11,20 @@ datasources:
       database_name: neuromorphic
       timeout: 30
     secureJsonData: {}
+    
+  - name: Autonomous Trading System
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    url: http://neuromorphic-trader:3002
+    uid: autonomous-trader
+    editable: true
+    jsonData:
+      database_name: autonomous_trading
+      timeout: 30
+    secureJsonData: {}
+    
+  - name: TestData DB
+    type: testdata
+    uid: testdata
+    editable: true
+    jsonData: {}
