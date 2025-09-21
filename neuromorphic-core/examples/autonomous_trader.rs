@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
             volume_spike_threshold: 3.0,
         },
         trading_config: PaperTradingConfig {
-            initial_capital: 100000.0,
+            initial_capital: 1000.0,
             commission_rate: 0.001,
             enable_stop_loss: true,
             enable_take_profit: true,
@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
     let mut trading_system = AutonomousTradingSystem::new(autonomous_config);
 
     println!("⚙️  Configuration:");
-    println!("   💰 Starting capital: $100,000");
+    println!("   💰 Starting capital: $1,000");
     println!("   📈 Max positions: 12");
     println!("   🎯 Min confidence: 72%");
     println!("   ⚡ Risk per trade: 1.5%");

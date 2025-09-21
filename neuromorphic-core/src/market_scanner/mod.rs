@@ -167,7 +167,17 @@ impl MarketScannerService {
         let market_data = self.market_data.clone();
 
         tokio::spawn(async move {
-            let mut data_stream = data_feeds.start_all_feeds().await.unwrap();
+            println!("📡 Initializing data feeds...");
+            let mut data_stream = match data_feeds.start_all_feeds().await {
+                Ok(stream) => {
+                    println!("✅ Data feeds started successfully");
+                    stream
+                }
+                Err(e) => {
+                    println!("❌ Failed to start data feeds: {}", e);
+                    return;
+                }
+            };
             
             loop {
                 tokio::select! {

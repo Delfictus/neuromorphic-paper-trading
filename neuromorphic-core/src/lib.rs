@@ -157,7 +157,17 @@ impl AutonomousTradingSystem {
         self.paper_trader.start().await?;
         self.paper_trader.start_metrics_api(3002).await;
         
-        let (market_stream, opportunity_stream) = self.market_scanner.start().await?;
+        println!("🚀 Starting market scanner...");
+        let (market_stream, opportunity_stream) = match self.market_scanner.start().await {
+            Ok(streams) => {
+                println!("✅ Market scanner started successfully");
+                streams
+            }
+            Err(e) => {
+                println!("❌ Failed to start market scanner: {}", e);
+                return Err(e);
+            }
+        };
         
         self.start_trading_loop(market_stream, opportunity_stream).await?;
         
@@ -293,6 +303,9 @@ impl AutonomousTradingSystem {
                 market_regime: market_scanner::MarketRegime::Consolidation,
                 overall_sentiment: 0.0,
             });
+
+        // Update metrics collector with current trading statistics
+        self.paper_trader.metrics_collector().update_portfolio_metrics(&stats);
 
         println!("\n📈 AUTONOMOUS TRADING STATUS");
         println!("💰 Portfolio: ${:.2} | P&L: {:.2}% | Positions: {}",

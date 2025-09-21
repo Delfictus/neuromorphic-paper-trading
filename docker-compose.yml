@@ -113,6 +113,36 @@ services:
     profiles:
       - prometheus
 
+  # Stock Monitoring Dashboard
+  dashboard:
+    image: nginx:alpine
+    container_name: neuromorphic-dashboard
+    ports:
+      - "8080:80"
+    volumes:
+      - ./dashboard.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      - neuromorphic-net
+    restart: unless-stopped
+    depends_on:
+      - neuromorphic-trader
+
+  # Demo Stock API for Dashboard Testing
+  demo-stock-api:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+        WORKDIR /app
+        COPY demo-stock-api.py .
+        EXPOSE 3003
+        CMD ["python3", "demo-stock-api.py"]
+    ports:
+      - "3003:3003"
+    networks:
+      - neuromorphic-net
+    restart: unless-stopped
+
 volumes:
   grafana-data:
     driver: local

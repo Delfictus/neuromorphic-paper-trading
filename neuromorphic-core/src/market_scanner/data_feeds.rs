@@ -112,7 +112,13 @@ struct YahooQuote {
 impl DataFeedManager {
     pub fn new(config: ScannerConfig) -> Self {
         let client = Client::new();
-        let feeds = HashMap::new();
+        let mut feeds = HashMap::new();
+        
+        // Add Yahoo Finance feed by default (no API key required)
+        let yahoo_feed = YahooFinanceFeed::new(client.clone());
+        feeds.insert(Exchange::NYSE, Box::new(yahoo_feed.clone()) as Box<dyn MarketDataFeed>);
+        feeds.insert(Exchange::NASDAQ, Box::new(yahoo_feed) as Box<dyn MarketDataFeed>);
+        
         let symbol_universe = Arc::new(RwLock::new(Vec::new()));
 
         Self {
@@ -138,32 +144,54 @@ impl DataFeedManager {
     pub async fn start_all_feeds(&self) -> Result<broadcast::Receiver<MarketData>> {
         let (tx, rx) = broadcast::channel(10000);
         
+        println!("🚀 Starting data feeds for {} exchanges", self.config.included_exchanges.len());
         for exchange in &self.config.included_exchanges {
+            println!("🔍 Processing exchange: {:?}", exchange);
             match exchange {
                 Exchange::NYSE | Exchange::NASDAQ => {
                     let client = self.client.clone();
                     let tx = tx.clone();
                     let symbol_universe = self.symbol_universe.clone();
+                    let exchange_clone = exchange.clone();
                     
                     tokio::spawn(async move {
                         let feed = YahooFinanceFeed::new(client);
-                        let mut interval = interval(Duration::from_millis(1000));
+                        let mut interval = interval(Duration::from_millis(30000)); // 30 seconds instead of 1 second
+                        
+                        println!("📡 Starting Yahoo Finance data feed for {:?}", exchange_clone);
                         
                         loop {
                             interval.tick().await;
                             
-                            if let Ok(market_data) = feed.get_market_data().await {
-                                for data in market_data {
-                                    let _ = tx.send(data);
+                            match feed.get_market_data().await {
+                                Ok(market_data) => {
+                                    println!("📊 Received {} market data points from Yahoo Finance", market_data.len());
+                                    for data in market_data {
+                                        let _ = tx.send(data);
+                                    }
+                                }
+                                Err(e) => {
+                                    println!("⚠️  Yahoo Finance API error: {}", e);
+                                    // Wait longer on error to avoid hitting rate limits
+                                    tokio::time::sleep(Duration::from_millis(60000)).await;
                                 }
                             }
                             
-                            if let Ok(universe) = feed.get_symbol_universe().await {
-                                let mut symbols = symbol_universe.write().await;
-                                for symbol in universe {
-                                    if !symbols.contains(&symbol) {
-                                        symbols.push(symbol);
+                            match feed.get_symbol_universe().await {
+                                Ok(universe) => {
+                                    let mut symbols = symbol_universe.write().await;
+                                    let initial_count = symbols.len();
+                                    for symbol in universe {
+                                        if !symbols.contains(&symbol) {
+                                            symbols.push(symbol);
+                                        }
                                     }
+                                    if symbols.len() > initial_count {
+                                        println!("📈 Symbol universe updated: {} symbols tracked", symbols.len());
+                                    }
+                                }
+                                Err(e) => {
+                                    println!("⚠️  Error getting symbol universe: {}", e);
                                 }
                             }
                         }
